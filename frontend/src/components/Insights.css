@@ -1,0 +1,18 @@
+.insight-box {
+  background: linear-gradient(145deg,#0c2348,#081733);
+  padding: 30px;
+  border-radius: 18px;
+  margin: 40px auto;
+  max-width: 900px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+}
+
+.insight-box h2 {
+  color: #6ee7ff;
+  margin-bottom: 15px;
+}
+
+.insight-box p {
+  color: #d1d5ff;
+  margin-bottom: 8px;
+}

@@ -1,57 +1,79 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 import joblib
-import numpy as np
-from pydantic import BaseModel
 
-# Create API app
-app = FastAPI(
-    title="AI Cyber Digital Twin API",
-    description="Cybersecurity anomaly detection using ML",
-    version="1.0"
+app = FastAPI()
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
-# Load saved ML files
+# Load ML files
 model = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
 pca = joblib.load("pca.pkl")
-feature_count = joblib.load("feature_count.pkl")
-
-
-# Input schema
-class InputData(BaseModel):
-    data: list[float]
+features = joblib.load("feature_names.pkl")
 
 
 @app.get("/")
 def home():
-    return {"message": "Cyber AI API running"}
+    return {"message": "Cyber AI running"}
 
 
-@app.get("/health")
-def health():
-    return {"status": "API healthy"}
-
-
-@app.post("/predict")
-def predict(input_data: InputData):
-
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
     try:
-        arr = np.array(input_data.data).reshape(1, -1)
+        df = pd.read_csv(file.file, header=None)
 
-        # Feature count check
-        if arr.shape[1] != feature_count:
-            return {
-                "error": f"Expected {feature_count} features, got {arr.shape[1]}"
-            }
+        # Remove label columns
+        df = df.iloc[:, :-2]
 
-        scaled = scaler.transform(arr)
+        # Same preprocessing as training
+        df = pd.get_dummies(df)
+
+        # Align features
+        for col in features:
+            if col not in df.columns:
+                df[col] = 0
+
+        df = df[features]
+
+        # ML prediction
+        scaled = scaler.transform(df)
         reduced = pca.transform(scaled)
-        prediction = model.predict(reduced)
+        pred = model.predict(reduced)
 
-        if prediction[0] == -1:
-            return {"result": "Anomaly detected"}
-        else:
-            return {"result": "Normal traffic"}
+        anomaly_count = int((pred == -1).sum())
+        total = len(df)
+
+        # Feature insights
+        variance = df.var().sort_values(ascending=False).head(8)
+
+        return {
+            "total_records": total,
+            "anomalies_detected": anomaly_count,
+            "risk_percent": round(anomaly_count/total*100, 2),
+
+            "traffic_distribution": {
+                "normal": int((pred == 1).sum()),
+                "anomaly": anomaly_count
+            },
+
+            "feature_variance": variance.to_dict(),
+
+            "risk_level":
+                "High" if anomaly_count/total > 0.25 else
+                "Moderate" if anomaly_count/total > 0.10 else
+                "Low",
+
+            "recommendation":
+                "Monitor unusual traffic spikes, IDS alerts and firewall logs."
+        }
 
     except Exception as e:
         return {"error": str(e)}

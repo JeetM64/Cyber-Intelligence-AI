@@ -1,0 +1,19 @@
+.upload-container {
+  text-align: center;
+  margin: 30px 0;
+}
+
+.upload-btn {
+  background: linear-gradient(90deg,#00c6ff,#6f42c1);
+  padding: 14px 28px;
+  border-radius: 30px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  transition: 0.3s;
+}
+
+.upload-btn:hover {
+  transform: scale(1.05);
+}
